@@ -1,6 +1,6 @@
 ---
 name: harness-verify
-description: "在开发前或开发过程中校验编号 Sprint Harness。用户输入 $harness-verify、询问 Sprint 是否就绪、或需要检查 JSON 合法性、需求-任务-验收-验证追踪链、孤立记录、重复 ID、缺失验证证据时使用。"
+description: "在开发前或开发过程中校验编号 Sprint Harness。用户输入 $harness-verify、询问 Sprint 是否就绪、或需要检查 JSON 合法性、AGENTS.md 入口、按证据生成的 docs 文档、需求-任务-验收-验证追踪链、孤立记录、重复 ID、缺失验证证据时使用。"
 ---
 
 # Harness 校验
@@ -34,6 +34,8 @@ python3 .agents/skills/harness-verify/scripts/verify_harness.py harness/sprints/
 
 - Sprint ID 符合 `SPRINT-NNN`。
 - 根目录存在 `AGENTS.md`，并且指向当前 Sprint。
+- `AGENTS.md` 只引用真实存在的 `docs/` 文档。
+- 不存在 `docs/roadmap.md`。
 - 必需 JSON 文件存在，并且可以正常解析。
 - 每条需求至少有一个源文件引用。
 - `sources.json` 中每个源文件都记录 `source_id`、`file`、`status`、`last_read_sha256`、`last_read_size`。
@@ -46,6 +48,8 @@ python3 .agents/skills/harness-verify/scripts/verify_harness.py harness/sprints/
 - 每个任务至少出现在一条追踪记录中。
 - 每条验收标准至少出现在一条追踪记录中。
 - 每个验证项都能连接到任务或追踪记录。
+- `docs/` 文档是可选解释层；没有对应证据时不要求存在。
+- Harness JSON 是必需执行层；即使没有 `docs/` 文档，也必须完整。
 
 ## 输出
 

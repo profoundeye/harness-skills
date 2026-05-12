@@ -8,6 +8,7 @@ from pathlib import Path
 
 
 SPRINT_RE = re.compile(r"^SPRINT-(\d{3})$")
+DOC_REF_RE = re.compile(r"docs/[A-Za-z0-9._/-]+\.md")
 
 
 def load_json(path, errors):
@@ -42,6 +43,10 @@ def project_root_for_sprint(sprint_dir):
     if sprint_dir.parent.name == "sprints" and sprint_dir.parent.parent.name == "harness":
         return sprint_dir.parent.parent.parent
     return Path.cwd()
+
+
+def collect_doc_refs(text):
+    return sorted(set(DOC_REF_RE.findall(text)))
 
 
 def collect_acceptance(requirements):
@@ -90,6 +95,13 @@ def verify(sprint_dir):
         expected_sprint_path = f"harness/sprints/{sprint_id}"
         if expected_sprint_path not in agents_text:
             errors.append(f"AGENTS.md 未指向当前 Sprint：{expected_sprint_path}")
+        for doc_ref in collect_doc_refs(agents_text):
+            if not (project_root / doc_ref).exists():
+                errors.append(f"AGENTS.md 引用了不存在的文档：{doc_ref}")
+
+    roadmap_path = project_root / "docs" / "roadmap.md"
+    if roadmap_path.exists():
+        errors.append("不应生成 docs/roadmap.md；请删除或改为其他明确需要的文档")
 
     for name, doc in [
         ("sources.json", sources),
