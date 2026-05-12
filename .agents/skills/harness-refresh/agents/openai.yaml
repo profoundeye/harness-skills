@@ -1,0 +1,3 @@
+display_name: Harness 刷新
+short_description: 刷新 Sprint 需求变更。
+default_prompt: 根据修改或追加的需求文件刷新当前 Sprint Harness。

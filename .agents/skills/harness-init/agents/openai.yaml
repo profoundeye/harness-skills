@@ -1,0 +1,3 @@
+display_name: Harness 初始化
+short_description: 初始化 Sprint Harness 记录。
+default_prompt: 根据我提供的需求文件初始化一个新的编号 Sprint Harness。

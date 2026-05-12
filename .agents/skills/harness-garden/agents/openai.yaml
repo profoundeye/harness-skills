@@ -1,0 +1,3 @@
+display_name: Harness 整理
+short_description: 清理陈旧 Harness 记录。
+default_prompt: 审查 Harness 记录，并提出或执行清理更新。

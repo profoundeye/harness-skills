@@ -1,0 +1,3 @@
+display_name: Harness 校验
+short_description: 校验 Sprint Harness JSON。
+default_prompt: 校验当前 Sprint Harness，并在开发前报告缺口。

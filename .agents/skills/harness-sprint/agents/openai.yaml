@@ -1,0 +1,3 @@
+display_name: Harness Sprint 开发
+short_description: 执行 Sprint 任务循环。
+default_prompt: 通过 Harness 循环开始开发当前 Sprint 任务。
