@@ -1,11 +1,13 @@
 ---
 name: harness-sprint
-description: "通过 Harness 循环执行编号 Sprint 的开发。用户输入 $harness-sprint，或要求 Codex 根据当前 Sprint 的 Harness JSON 开始开发、先校验 Sprint、处理需求源文件变更、选择任务、实现、验证、失败重试、更新追踪、写验证报告、并为每个完成任务提交一个 Git 提交时使用。"
+description: "通过 Harness 循环执行编号 Sprint 的开发。用户输入 $harness-sprint，或要求 Codex 根据当前 Sprint 的 Harness JSON 开始开发时，默认启动 worker/verifier 子 Agent 完成编码与独立校验，并在通过后更新追踪、写验证报告、为每个完成任务提交一个 Git 提交。"
 ---
 
 # Harness Sprint 开发
 
-按任务逐个开发当前 Sprint，循环方式是：选择任务、实现、验证、更新记录、提交。
+按任务逐个开发当前 Sprint，循环方式是：选择任务、启动 worker 子 Agent 编码、启动 verifier 子 Agent 独立校验、失败重试、更新记录、提交。
+
+`$harness-sprint` 本身视为用户已经明确授权使用子 Agent。除非当前 Codex 环境没有 `spawn_agent` 能力，否则不要退化为主进程独自编码和校验。
 
 ## 启动前检查
 
@@ -48,14 +50,14 @@ AGENTS.md
 1. 确认任务关联的需求和验收标准。
 2. 确认任务仍属于当前 Sprint 范围，且没有被 `harness-refresh` 标记为 `needs_replan`、`blocked`、`cancelled` 或 `superseded`。
 3. 修改前先阅读相关代码和实际存在的相关 `docs/` 文档。
-4. 只实现当前任务范围内的内容；不要实现 `docs/roadmap.md` 或未来 Sprint 才需要的内容。
-5. 先运行最小相关验证。
-6. 如果验证失败，修复后重跑，直到通过或确认存在真实阻塞。
-7. 当改动风险较高时，再运行更广的检查。
-8. 更新 `verification-report.json`，记录命令、结果、时间和备注。
-9. 更新 `tasks.json`，把任务状态改为 `done`，提交后记录提交哈希；如果不是 Git 仓库，记录跳过原因。
-10. 更新 `traceability.json` 中已完成链路的状态。
-11. 为完成的任务创建一个聚焦的 Git commit；非 Git 仓库只能记录验证结果，不能声称已提交。
+4. 启动 worker 子 Agent，只实现当前任务范围内的内容；不要实现 `docs/roadmap.md` 或未来 Sprint 才需要的内容。
+5. worker 完成后，启动 verifier 子 Agent 独立检查 diff 并运行最小相关验证。
+6. 如果验证失败，把 verifier 的失败证据交回 worker 修复；最多重试 3 轮。
+7. 当改动风险较高时，由 verifier 或主进程再运行更广的检查。
+8. 验证通过后，主进程更新 `verification-report.json`，记录命令、结果、时间和备注。
+9. 主进程更新 `tasks.json`，把任务状态改为 `done`，提交后记录提交哈希；如果不是 Git 仓库，记录跳过原因。
+10. 主进程更新 `traceability.json` 中已完成链路的状态。
+11. 主进程为完成的任务创建一个聚焦的 Git commit；非 Git 仓库只能记录验证结果，不能声称已提交。
 
 提交信息格式：
 
@@ -65,9 +67,33 @@ feat: TASK-001-001 实现支付方式选择器
 
 如果能明显判断类型，使用合适的提交类型前缀：`feat`、`fix`、`test`、`docs`、`refactor`、`chore`。
 
-## 子进程
+## 子 Agent 强制执行
 
-只有当用户在当前请求里明确要求使用子进程、子 Agent、委派或并行开发时，才启动子进程。允许启动时，把独立任务按互不重叠的文件所有权拆分，并提醒子进程不要回滚其他人的改动。
+- `$harness-sprint` 本身就是使用 worker/verifier 子 Agent 的明确授权。
+- 每个 ready 任务默认一次只处理一个，必须先启动 worker 子 Agent 编码，再启动 verifier 子 Agent 校验。
+- 如果当前环境没有可用的 `spawn_agent` 能力，停止 Sprint 开发，并报告“当前环境无法执行 harness-sprint 子 Agent 流程”；不要静默改成主进程独自开发。
+- 只有当用户另外明确要求并行，且任务文件所有权互不重叠时，才允许多个 worker 并行。
+
+worker 子 Agent 规则：
+
+- 负责实现任务代码和必要测试。
+- 不负责提交 Git。
+- 不负责最终更新 Harness JSON。
+- 必须报告修改文件、实现摘要、已运行命令和已知风险。
+- 必须知道自己不是唯一开发者，不得回滚其他人的改动。
+
+verifier 子 Agent 规则：
+
+- 负责读取任务、检查 diff、运行 `verification-plan.json` 中对应命令或最小相关验证。
+- 不修改业务代码。
+- 验证失败时，只输出失败证据、命令、日志摘要和建议修复点。
+- 验证通过时，输出通过证据和实际运行的命令。
+
+失败重试规则：
+
+- 验证失败后，主进程把 verifier 的失败证据交回 worker 修复。
+- 同一任务最多重试 3 轮。
+- 3 轮后仍失败时，把任务标记为 `blocked`，并写入 `verification-report.json` 和 `decisions.jsonl`。
 
 ## 验证完整性
 
